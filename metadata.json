@@ -1,0 +1,7 @@
+{
+  "name": "1Copy of Interactive Spanish-English Study Guide",
+  "description": "An interactive study guide to help users learn English vocabulary and grammar from the Open Day 3 book. Features unit breakdowns, vocabulary lists, and AI-powered example sentence generation.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
