@@ -1,8 +1,7 @@
-
 import React, { useState } from 'react';
 import { Unit, VocabWord, ExampleSentence, PronunciationFeedback } from '../types';
 import Button from '../components/Button';
-import { generateExampleSentence, generatePronunciationTip } from '../services/geminiService';
+import { generateExampleSentence, generatePronunciationTip, generateImageForWord, getCulturalContext } from '../services/geminiService';
 import SparklesIcon from '../components/icons/SparklesIcon';
 import SoundIcon from '../components/icons/SoundIcon';
 import WarningIcon from '../components/icons/WarningIcon';
@@ -15,6 +14,10 @@ import TeacherAgentModal from '../components/TeacherAgentModal';
 import GraduationCapIcon from '../components/icons/GraduationCapIcon';
 import MicrophoneIcon from '../components/icons/MicrophoneIcon';
 import PhoneticsBlock from '../components/PhoneticsBlock';
+import ImageIcon from '../components/icons/ImageIcon';
+import GlobeIcon from '../components/icons/GlobeIcon';
+import StoryWeaver from '../components/StoryWeaver';
+import CrosswordPuzzle from '../components/CrosswordPuzzle';
 
 interface UnitDetailPageProps {
     unit: Unit;
@@ -29,6 +32,14 @@ const VocabItem: React.FC<{ word: VocabWord }> = ({ word }) => {
     const [error, setError] = useState<string | null>(null);
     const [pronunciationFeedback, setPronunciationFeedback] = useState<PronunciationFeedback>({ status: 'idle', message: '' });
 
+    const [image, setImage] = useState<string | null>(null);
+    const [isLoadingImage, setIsLoadingImage] = useState(false);
+    const [imageError, setImageError] = useState<string | null>(null);
+
+    const [context, setContext] = useState<{ text: string; sources: {uri: string, title: string}[] } | null>(null);
+    const [isLoadingContext, setIsLoadingContext] = useState(false);
+    const [contextError, setContextError] = useState<string | null>(null);
+
     const handleGenerateExample = async () => {
         setIsLoadingExample(true);
         setError(null);
@@ -39,6 +50,32 @@ const VocabItem: React.FC<{ word: VocabWord }> = ({ word }) => {
             setExample(result);
         } else {
             setError('No se pudo generar un ejemplo. Inténtalo de nuevo.');
+        }
+    };
+
+    const handleGenerateImage = async () => {
+        setIsLoadingImage(true);
+        setImageError(null);
+        setImage(null);
+        const result = await generateImageForWord(word.en);
+        setIsLoadingImage(false);
+        if (result) {
+            setImage(result);
+        } else {
+            setImageError('No se pudo generar una imagen. Inténtalo de nuevo.');
+        }
+    };
+
+    const handleGetContext = async () => {
+        setIsLoadingContext(true);
+        setContextError(null);
+        setContext(null);
+        const result = await getCulturalContext(word.en);
+        setIsLoadingContext(false);
+        if (result) {
+            setContext(result);
+        } else {
+            setContextError('No se pudo obtener contexto. Inténtalo de nuevo.');
         }
     };
 
@@ -108,7 +145,7 @@ const VocabItem: React.FC<{ word: VocabWord }> = ({ word }) => {
             <div>
                 <div className="flex justify-between items-start">
                     <div className="flex-grow mr-2">
-                        <div className="flex items-center">
+                        <div className="flex items-center flex-wrap">
                             <span className="font-bold text-lg text-gray-800">{word.en}</span>
                             <button onClick={() => speak(word.en, 'en-US')} className="ml-2 p-1 rounded-full hover:bg-gray-200 transition-colors" title="Listen" aria-label={`Listen to ${word.en}`}>
                                 <SoundIcon className="w-5 h-5 text-gray-600" />
@@ -119,9 +156,17 @@ const VocabItem: React.FC<{ word: VocabWord }> = ({ word }) => {
                         </div>
                         <p className="text-gray-600">{word.es}</p>
                     </div>
-                    <button onClick={handleGenerateExample} disabled={isLoadingExample} className="p-2 rounded-full bg-purple-100 text-brand-primary hover:bg-purple-200 transition disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0" title="Generar ejemplo con IA" aria-label="Generar frase de ejemplo con IA">
-                        {isLoadingExample ? <div className="w-5 h-5 border-2 border-purple-200 border-t-brand-primary rounded-full animate-spin"></div> : <SparklesIcon />}
-                    </button>
+                    <div className="flex items-center flex-shrink-0">
+                        <button onClick={handleGenerateExample} disabled={isLoadingExample} className="p-2 rounded-full bg-purple-100 text-brand-primary hover:bg-purple-200 transition disabled:opacity-50 disabled:cursor-not-allowed" title="Generar ejemplo con IA" aria-label="Generar frase de ejemplo con IA">
+                            {isLoadingExample ? <div className="w-5 h-5 border-2 border-purple-200 border-t-brand-primary rounded-full animate-spin"></div> : <SparklesIcon />}
+                        </button>
+                         <button onClick={handleGenerateImage} disabled={isLoadingImage} className="p-2 rounded-full bg-blue-100 text-blue-600 hover:bg-blue-200 transition disabled:opacity-50 disabled:cursor-not-allowed ml-2" title="Generar imagen con IA" aria-label="Generar imagen con IA">
+                            {isLoadingImage ? <div className="w-5 h-5 border-2 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div> : <ImageIcon />}
+                        </button>
+                        <button onClick={handleGetContext} disabled={isLoadingContext} className="p-2 rounded-full bg-teal-100 text-teal-600 hover:bg-teal-200 transition disabled:opacity-50 disabled:cursor-not-allowed ml-2" title="Obtener contexto cultural" aria-label="Obtener contexto cultural">
+                            {isLoadingContext ? <div className="w-5 h-5 border-2 border-teal-200 border-t-teal-600 rounded-full animate-spin"></div> : <GlobeIcon />}
+                        </button>
+                    </div>
                 </div>
                  {pronunciationFeedback.status !== 'idle' && (
                     <div className={`mt-3 text-sm p-2 rounded-md ${pronunciationFeedback.status === 'correct' ? 'bg-green-100 text-green-800' : ''} ${pronunciationFeedback.status === 'incorrect' ? 'bg-red-100 text-red-800' : ''} ${pronunciationFeedback.status === 'listening' || pronunciationFeedback.status === 'processing' ? 'bg-blue-100 text-blue-800' : ''}`}>
@@ -130,13 +175,44 @@ const VocabItem: React.FC<{ word: VocabWord }> = ({ word }) => {
                     </div>
                 )}
             </div>
+            {error && <p className="mt-2 text-sm text-red-500">{error}</p>}
             {example && (
                 <div className="mt-3 p-3 bg-purple-50 border-l-4 border-purple-300 rounded-r-lg">
-                    <p className="text-sm text-gray-800"><strong>EN:</strong> {example.english}</p>
+                    <div className="flex items-center">
+                        <p className="text-sm text-gray-800 flex-grow"><strong>EN:</strong> {example.english}</p>
+                        <button onClick={() => speak(example.english, 'en-US')} className="ml-2 p-1 rounded-full hover:bg-purple-200 transition-colors flex-shrink-0" title="Escuchar ejemplo" aria-label="Escuchar la frase de ejemplo">
+                            <SoundIcon className="w-5 h-5 text-purple-700" />
+                        </button>
+                    </div>
                     <p className="text-sm text-gray-600 mt-1"><strong>ES:</strong> {example.spanish}</p>
                 </div>
             )}
-            {error && <p className="mt-2 text-sm text-red-500">{error}</p>}
+            {imageError && <p className="mt-2 text-sm text-red-500">{imageError}</p>}
+            {image && (
+                <div className="mt-3">
+                    <img src={image} alt={`Illustration of ${word.en}`} className="rounded-lg border border-gray-200" />
+                </div>
+            )}
+            {contextError && <p className="mt-2 text-sm text-red-500">{contextError}</p>}
+            {context && (
+                <div className="mt-3 p-3 bg-teal-50 border-l-4 border-teal-300 rounded-r-lg">
+                    <p className="text-sm text-gray-800">{context.text}</p>
+                    {context.sources && context.sources.length > 0 && (
+                        <div className="mt-2 pt-2 border-t border-teal-200">
+                            <h4 className="text-xs font-bold text-teal-800">Fuentes:</h4>
+                            <ul className="list-disc list-inside text-xs text-teal-700">
+                                {context.sources.map(source => (
+                                    <li key={source.uri} className="truncate">
+                                        <a href={source.uri} target="_blank" rel="noopener noreferrer" className="hover:underline">
+                                            {source.title || source.uri}
+                                        </a>
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    )}
+                </div>
+            )}
         </div>
     );
 };
@@ -203,8 +279,12 @@ const UnitDetailPage: React.FC<UnitDetailPageProps> = ({ unit, unitId, onBack, o
             </div>
         )},
         { id: 'practice', label: 'Práctica', icon: <ChatBubbleIcon className="w-5 h-5"/>, content: (
-            <div className="space-y-4">
-                {unit.practiceTips.map((p, index) => <InteractiveMarkdownBlock key={index} content={p} topic="Consejos de Práctica" onAskTeacher={handleAskTeacher} />)}
+            <div>
+                <StoryWeaver unit={unit} />
+                <CrosswordPuzzle unit={unit} />
+                <div className="mt-8 border-t pt-6 space-y-4">
+                     {unit.practiceTips.map((p, index) => <InteractiveMarkdownBlock key={index} content={p} topic="Consejos de Práctica" onAskTeacher={handleAskTeacher} />)}
+                </div>
             </div>
         )},
     ];

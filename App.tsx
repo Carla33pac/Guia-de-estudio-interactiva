@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback } from 'react';
 import HomePage from './pages/HomePage';
 import UnitsOverviewPage from './pages/UnitsOverviewPage';
@@ -5,10 +6,11 @@ import UnitDetailPage from './pages/UnitDetailPage';
 import QuizPage from './pages/QuizPage';
 import Header from './components/Header';
 import Navigation from './components/Navigation';
-import { Page, Unit } from './types';
+import { Page } from './types';
 import { units as allUnitsData } from './data/studyData';
 import BadgeNotificationManager from './components/BadgeNotificationManager';
 import { useGameState } from './hooks/useGameState';
+import ReviewPage from './pages/ReviewPage';
 
 const App: React.FC = () => {
     const [currentPage, setCurrentPage] = useState<Page>('home');
@@ -18,6 +20,10 @@ const App: React.FC = () => {
     const navigateTo = useCallback((page: Page) => {
         setCurrentPage(page);
     }, []);
+
+    const handleNavigateToReview = useCallback(() => {
+        navigateTo('review');
+    }, [navigateTo]);
 
     const handleSelectUnit = useCallback((unitId: string) => {
         setCurrentUnitId(unitId);
@@ -40,10 +46,14 @@ const App: React.FC = () => {
         setCurrentPage('home');
     }, []);
 
+    const handleReviewFinish = useCallback(() => {
+        setCurrentPage('home');
+    }, []);
+
     const renderPage = () => {
         switch (currentPage) {
             case 'home':
-                return <HomePage onNavigateToUnits={() => navigateTo('units-overview')} />;
+                return <HomePage onNavigateToUnits={() => navigateTo('units-overview')} onNavigateToReview={handleNavigateToReview} />;
             case 'units-overview':
                 return <UnitsOverviewPage units={allUnitsData} onSelectUnit={handleSelectUnit} gameState={gameState} />;
             case 'unit-detail':
@@ -51,15 +61,17 @@ const App: React.FC = () => {
                 if (unit) {
                     return <UnitDetailPage unit={unit} unitId={currentUnitId!} onBack={handleBackToUnits} onStartQuiz={handleStartQuiz} />;
                 }
-                return <HomePage onNavigateToUnits={() => navigateTo('units-overview')} />;
+                return <HomePage onNavigateToUnits={() => navigateTo('units-overview')} onNavigateToReview={handleNavigateToReview} />;
             case 'quiz':
                  const quizUnit = currentUnitId ? allUnitsData[currentUnitId] : null;
                  if (quizUnit) {
                      return <QuizPage unit={quizUnit} unitId={currentUnitId!} onFinish={handleQuizFinish} />;
                  }
-                 return <HomePage onNavigateToUnits={() => navigateTo('units-overview')} />;
+                 return <HomePage onNavigateToUnits={() => navigateTo('units-overview')} onNavigateToReview={handleNavigateToReview} />;
+            case 'review':
+                return <ReviewPage onFinish={handleReviewFinish} />;
             default:
-                return <HomePage onNavigateToUnits={() => navigateTo('units-overview')} />;
+                return <HomePage onNavigateToUnits={() => navigateTo('units-overview')} onNavigateToReview={handleNavigateToReview} />;
         }
     };
 

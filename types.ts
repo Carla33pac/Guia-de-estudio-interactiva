@@ -1,7 +1,6 @@
-
 import React from 'react';
 
-export type Page = 'home' | 'units-overview' | 'unit-detail' | 'quiz';
+export type Page = 'home' | 'units-overview' | 'unit-detail' | 'quiz' | 'review';
 
 export interface VocabWord {
     en: string;
@@ -9,7 +8,7 @@ export interface VocabWord {
 }
 
 export interface Unit {
-    title: string;
+    title:string;
     vocab: VocabWord[];
     grammar: string[];
     phonetics: string[];
@@ -78,4 +77,19 @@ export interface PronunciationFeedback {
     status: 'idle' | 'listening' | 'processing' | 'correct' | 'incorrect';
     message: string;
     tip?: string;
+}
+
+export interface CrosswordEntry {
+    number: number;
+    clue: string;
+    answer: string;
+    orientation: 'across' | 'down';
+    row: number;
+    col: number;
+}
+
+export interface CrosswordData {
+    rows: number;
+    cols: number;
+    entries: CrosswordEntry[];
 }

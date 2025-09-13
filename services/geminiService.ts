@@ -1,6 +1,5 @@
-
 import { GoogleGenAI, Type, Chat } from "@google/genai";
-import { ExampleSentence, VocabWord, FillInTheBlankQuestion, GrammarDrill } from '../types';
+import { ExampleSentence, VocabWord, FillInTheBlankQuestion, GrammarDrill, CrosswordData } from '../types';
 
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
 
@@ -27,6 +26,29 @@ Start your very first message of the conversation with a friendly greeting like:
 
     return chat;
 };
+
+export const createStoryChat = (unitTitle: string, vocabList: string): Chat => {
+    const systemInstruction = `You are a collaborative storyteller for young, A2-level English learners. Your goal is to create a fun, simple story with the student.
+CONTEXT: The student is studying the unit "${unitTitle}" which includes these words: ${vocabList}.
+
+RULES:
+1.  **Be a Partner**: You are writing a story WITH the student, not for them. Your role is to add a small part and then let them add their part.
+2.  **Language**: Use simple, A2-level English. Keep sentences short.
+3.  **Your Turn**: When it's your turn, write a short paragraph (2-4 sentences) that continues the story.
+4.  **Encourage**: Always end your turn with an open question to encourage the student to continue, like "What happened next?", "What did they decide to do?", or "Suddenly, what did she see?".
+5.  **Vocabulary**: Try to naturally use one or two words from the vocabulary list in your parts of the story.
+6.  **First Message**: Your VERY FIRST message must be ONLY the opening paragraph of the story. Do NOT add greetings like "Hello!" or "Let's start!". Just begin the story.`;
+
+    const chat = ai.chats.create({
+        model: 'gemini-2.5-flash',
+        config: {
+            systemInstruction: systemInstruction,
+        },
+    });
+
+    return chat;
+};
+
 
 export const generateExampleSentence = async (word: string): Promise<ExampleSentence | null> => {
     try {
@@ -60,6 +82,64 @@ export const generateExampleSentence = async (word: string): Promise<ExampleSent
 
     } catch (error) {
         console.error("Error generating example sentence:", error);
+        return null;
+    }
+};
+
+export const generateImageForWord = async (word: string): Promise<string | null> => {
+    try {
+        const prompt = `A simple, clean, child-friendly cartoon illustration of '${word}'. White background, vector style.`;
+
+        const response = await ai.models.generateImages({
+            model: 'imagen-4.0-generate-001',
+            prompt: prompt,
+            config: {
+              numberOfImages: 1,
+              outputMimeType: 'image/png',
+              aspectRatio: '1:1',
+            },
+        });
+
+        if (response.generatedImages && response.generatedImages.length > 0) {
+            const base64ImageBytes: string = response.generatedImages[0].image.imageBytes;
+            return `data:image/png;base64,${base64ImageBytes}`;
+        }
+        return null;
+
+    } catch (error) {
+        console.error("Error generating image:", error);
+        return null;
+    }
+};
+
+export const getCulturalContext = async (word: string): Promise<{ text: string; sources: { uri: string; title: string }[] } | null> => {
+    try {
+        const prompt = `Provide a single, interesting cultural fact or real-world context about the word "${word}" for a young English learner. Keep it simple and engaging, in one short paragraph. The user is Spanish-speaking.`;
+        
+        const response = await ai.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: prompt,
+            config: {
+                tools: [{ googleSearch: {} }],
+            },
+        });
+
+        const text = response.text.trim();
+        const rawSources = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
+        const sources = rawSources
+            .map((s: any) => s.web)
+            .filter((s: any) => s && s.uri && s.title)
+            .reduce((acc: any[], current: any) => { // Remove duplicates
+                if (!acc.find((item) => item.uri === current.uri)) {
+                    acc.push(current);
+                }
+                return acc;
+            }, []);
+
+        return { text, sources };
+
+    } catch (error) {
+        console.error("Error getting cultural context:", error);
         return null;
     }
 };
@@ -212,6 +292,80 @@ Provide the response in JSON format.
     }
 };
 
+export const generateCrosswordPuzzle = async (vocab: VocabWord[]): Promise<CrosswordData | null> => {
+    try {
+        const vocabList = vocab.map(v => `${v.en} (${v.es})`).join(', ');
+        const prompt = `
+Based on the following vocabulary list, create a compact, intersecting crossword puzzle for an A2 English learner.
+Select 5 to 7 words from the list. The clues should be the Spanish words, and the answers the English words.
+
+Vocabulary list: ${vocabList}
+
+Provide the response as a JSON object with the following structure:
+{
+  "rows": number, // The total number of rows in the grid.
+  "cols": number, // The total number of columns in the grid.
+  "entries": [ // An array of word entries.
+    {
+      "number": number, // The clue number, starting from 1.
+      "clue": "string", // The Spanish word as the clue.
+      "answer": "string", // The English word as the answer.
+      "orientation": "across" | "down",
+      "row": number, // The 1-based starting row for the word.
+      "col": number // The 1-based starting column for the word.
+    }
+  ]
+}
+
+IMPORTANT: Ensure the words intersect correctly and the row/col coordinates are accurate for a valid puzzle. The grid should be as small as possible to fit the words.
+`;
+
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: prompt,
+            config: {
+                responseMimeType: 'application/json',
+                responseSchema: {
+                    type: Type.OBJECT,
+                    properties: {
+                        rows: { type: Type.INTEGER },
+                        cols: { type: Type.INTEGER },
+                        entries: {
+                            type: Type.ARRAY,
+                            items: {
+                                type: Type.OBJECT,
+                                properties: {
+                                    number: { type: Type.INTEGER },
+                                    clue: { type: Type.STRING },
+                                    answer: { type: Type.STRING },
+                                    orientation: { type: Type.STRING, enum: ['across', 'down'] },
+                                    row: { type: Type.INTEGER },
+                                    col: { type: Type.INTEGER },
+                                },
+                                required: ['number', 'clue', 'answer', 'orientation', 'row', 'col']
+                            }
+                        }
+                    },
+                    required: ['rows', 'cols', 'entries']
+                }
+            }
+        });
+
+        const jsonText = response.text.trim();
+        const data = JSON.parse(jsonText) as CrosswordData;
+        
+        // Basic validation
+        if (data.rows > 0 && data.cols > 0 && data.entries.length > 0) {
+            return data;
+        }
+        return null;
+
+    } catch (error) {
+        console.error("Error generating crossword puzzle:", error);
+        return null;
+    }
+};
+
 export const generateQuizFeedback = async (score: number, total: number, unitTitle: string): Promise<string> => {
     try {
         const percentage = (score / total) * 100;
@@ -227,7 +381,7 @@ export const generateQuizFeedback = async (score: number, total: number, unitTit
         }
 
         const prompt = `Act as Profe Alex, a friendly and encouraging AI English teacher for A2 learners.
-A student just completed a quiz for the unit "${unitTitle}" with a score of ${score} out of ${total}. This is ${performanceDescription}.
+A student just completed a quiz for the unit "${unitTitle}" with a a score of ${score} out of ${total}. This is ${performanceDescription}.
 Write a short, positive, and encouraging feedback message in Spanish (1-2 sentences).
 - Start with a positive phrase.
 - Mention their score.

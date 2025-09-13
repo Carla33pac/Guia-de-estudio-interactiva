@@ -3,13 +3,16 @@ import React from 'react';
 import Button from '../components/Button';
 import GamificationDashboard from '../components/GamificationDashboard';
 import { useGameState } from '../hooks/useGameState';
+import ArrowPathIcon from '../components/icons/ArrowPathIcon';
 
 interface HomePageProps {
     onNavigateToUnits: () => void;
+    onNavigateToReview: () => void;
 }
 
-const HomePage: React.FC<HomePageProps> = ({ onNavigateToUnits }) => {
+const HomePage: React.FC<HomePageProps> = ({ onNavigateToUnits, onNavigateToReview }) => {
     const { gameState } = useGameState();
+    const hasCompletedUnits = Object.keys(gameState.completedUnits).length > 0;
 
     return (
         <div>
@@ -26,9 +29,20 @@ const HomePage: React.FC<HomePageProps> = ({ onNavigateToUnits }) => {
                         <strong>¿Cómo estudiar?</strong> Lee con calma cada sección. No intentes aprender todo en un día. Practica diciendo las oraciones en voz alta. ¡Verás qué fácil es aprender inglés con esta guía!
                     </p>
                 </div>
-                <Button onClick={onNavigateToUnits}>
-                    Explorar Unidades
-                </Button>
+                <div className="flex flex-col sm:flex-row justify-center items-center gap-4">
+                    <Button onClick={onNavigateToUnits}>
+                        Explorar Unidades
+                    </Button>
+                    <Button 
+                        onClick={onNavigateToReview}
+                        disabled={!hasCompletedUnits}
+                        className={`flex items-center gap-2 ${!hasCompletedUnits ? 'bg-gray-400 hover:bg-gray-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700 focus:ring-green-500'}`}
+                        title={!hasCompletedUnits ? "Completa al menos un cuestionario para desbloquear el modo de repaso" : "Repasa conceptos de unidades completadas"}
+                    >
+                        <ArrowPathIcon className="w-5 h-5" />
+                        Modo de Repaso
+                    </Button>
+                </div>
             </div>
             <GamificationDashboard gameState={gameState} />
         </div>
