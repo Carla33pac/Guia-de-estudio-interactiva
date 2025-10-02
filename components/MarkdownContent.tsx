@@ -111,13 +111,20 @@ const MarkdownContent: React.FC<{ content: string }> = ({ content }) => {
         if (block.startsWith('###')) {
             const headingLevel = (block.match(/#/g) || []).length;
             const textContent = block.substring(headingLevel).trim();
-            const Tag = `h${headingLevel}` as keyof JSX.IntrinsicElements;
+            // FIX: Use a simple string for the tag name.
+            const Tag = `h${headingLevel}`;
             const styles = {
                 2: 'text-2xl font-bold mt-6 mb-3',
                 3: 'text-xl font-bold mt-4 mb-2 text-gray-800',
                 4: 'text-lg font-semibold mt-3 mb-1',
             }[headingLevel] || 'text-lg font-semibold';
-            return <Tag className={styles} key={`heading-${index}`} dangerouslySetInnerHTML={{ __html: inlineMarkdownToHtml(textContent) }} />;
+            // FIX: Use React.createElement to robustly create dynamic HTML tags,
+            // resolving potential 'JSX' namespace and compilation errors.
+            return React.createElement(Tag, {
+                className: styles,
+                key: `heading-${index}`,
+                dangerouslySetInnerHTML: { __html: inlineMarkdownToHtml(textContent) }
+            });
         }
 
         return <div key={`p-${index}`} className="my-2 text-gray-700 leading-relaxed" dangerouslySetInnerHTML={{ __html: inlineMarkdownToHtml(block) }} />;

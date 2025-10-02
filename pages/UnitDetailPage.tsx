@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+
+import React, { useState, useCallback, useEffect } from 'react';
 import { Unit, VocabWord, ExampleSentence, PronunciationFeedback } from '../types';
 import Button from '../components/Button';
 import { generateExampleSentence, generatePronunciationTip, generateImageForWord, getCulturalContext } from '../services/geminiService';
@@ -26,7 +27,12 @@ interface UnitDetailPageProps {
     onStartQuiz: () => void;
 }
 
-const VocabItem: React.FC<{ word: VocabWord }> = ({ word }) => {
+interface VocabItemProps {
+    word: VocabWord;
+    unitId: string;
+}
+
+const VocabItem: React.FC<VocabItemProps> = ({ word, unitId }) => {
     const [example, setExample] = useState<ExampleSentence | null>(null);
     const [isLoadingExample, setIsLoadingExample] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -53,7 +59,8 @@ const VocabItem: React.FC<{ word: VocabWord }> = ({ word }) => {
         }
     };
 
-    const handleGenerateImage = async () => {
+    const handleGenerateImage = useCallback(async () => {
+        if (isLoadingImage) return;
         setIsLoadingImage(true);
         setImageError(null);
         setImage(null);
@@ -64,7 +71,13 @@ const VocabItem: React.FC<{ word: VocabWord }> = ({ word }) => {
         } else {
             setImageError('No se pudo generar una imagen. Inténtalo de nuevo.');
         }
-    };
+    }, [isLoadingImage, word.en]);
+
+    useEffect(() => {
+        if (unitId === 'W' && !image && !imageError) {
+            handleGenerateImage();
+        }
+    }, [unitId, image, imageError, handleGenerateImage]);
 
     const handleGetContext = async () => {
         setIsLoadingContext(true);
@@ -250,7 +263,7 @@ const UnitDetailPage: React.FC<UnitDetailPageProps> = ({ unit, unitId, onBack, o
         { id: 'vocab', label: 'Vocabulario', icon: <BookIcon className="w-5 h-5"/>, content: (
             <div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {unit.vocab.map(v => <VocabItem key={v.en} word={v} />)}
+                    {unit.vocab.map(v => <VocabItem key={v.en} word={v} unitId={unitId} />)}
                 </div>
                  <div className="mt-6 text-center">
                     <button 

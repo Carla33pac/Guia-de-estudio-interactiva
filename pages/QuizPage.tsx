@@ -41,7 +41,8 @@ const QuizPage: React.FC<QuizPageProps> = ({ unit, unitId, onFinish }) => {
 
     const generateQuestions = useCallback(async () => {
         setIsLoading(true);
-        const unitWords = shuffleArray(unit.vocab);
+        // FIX: Explicitly type unitWords to ensure type safety and prevent downstream errors.
+        const unitWords: VocabWord[] = shuffleArray(unit.vocab);
         const generatedQuestions: QuizQuestion[] = [];
 
         // For simplicity, let's limit to 10 questions per quiz

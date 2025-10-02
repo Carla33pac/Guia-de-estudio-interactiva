@@ -11,7 +11,9 @@ interface UnitsOverviewPageProps {
 const UnitsOverviewPage: React.FC<UnitsOverviewPageProps> = ({ units, onSelectUnit, gameState }) => {
     return (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {Object.entries(units).map(([id, unit]) => {
+            {/* FIX: Changed from Object.entries to Object.keys to ensure correct type inference for 'unit'. */}
+            {Object.keys(units).map((id) => {
+                const unit = units[id];
                 const completionData = gameState.completedUnits[id];
                 return (
                     <Card 
